@@ -51,7 +51,7 @@ UIEdgeInsetsGetVerticalValue(UIEdgeInsets insets) {
     self = [super init];
     if (self) {
         _menuItem = menuItem;
-        self.imageEdgeInsets = UIEdgeInsetsMake(kImageMargin, 0, kImageMargin, 0);
+        self.imageEdgeInsets = UIEdgeInsetsMake(kImageMargin, kImageMargin, kImageMargin, kImageMargin);
         [self setupConfig];
         [self addObserver:self forKeyPath:@"highlighted" options:NSKeyValueObservingOptionNew context:nil];
     }

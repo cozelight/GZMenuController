@@ -80,7 +80,7 @@
 }
 
 - (void)test {
-    [[GZMenuController sharedMenuController] setMenuVisible:NO];
+    NSLog(@"test");
 }
 
 - (IBAction)textMenuDidClick:(UIButton *)sender {

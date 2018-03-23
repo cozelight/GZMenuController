@@ -168,7 +168,7 @@
     _menuItemFont = [UIFont systemFontOfSize:14];
     _menuItemTintColor = [UIColor whiteColor];
     _menuItemHighlightColor = [UIColor lightGrayColor];
-    _imagePosition = GZMenuButtonImagePositionBottom;
+    _imagePosition = GZMenuButtonImagePositionTop;
     
     [self.layer addSublayer:self.contentLayer];
 }

@@ -30,7 +30,7 @@ typedef NS_ENUM(NSInteger, GZMenuControllerArrowDirection) {
 
 @property (nonatomic, assign) GZMenuControllerArrowDirection arrowDirection; // default is GZMenuControllerArrowDefault
 
-@property (nonatomic, copy) NSArray<GZMenuItem *> *menuItems; // default is nil. these are in addition to the standard items
+@property (nonatomic, copy, nullable) NSArray<GZMenuItem *> *menuItems; // default is nil. these are in addition to the standard items
 
 @property (nonatomic, assign, readonly) CGRect menuFrame;
 

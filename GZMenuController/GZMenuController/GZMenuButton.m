@@ -123,6 +123,8 @@ UIEdgeInsetsGetVerticalValue(UIEdgeInsets insets) {
                 titleFrame.origin.x = self.contentEdgeInsets.left + self.titleEdgeInsets.left;
                 titleFrame.size.width = titleLimitSize.width;
                 break;
+            default:
+                break;
         }
         
         if (self.imagePosition == GZMenuButtonImagePositionTop) {
@@ -214,6 +216,8 @@ UIEdgeInsetsGetVerticalValue(UIEdgeInsets insets) {
                 titleFrame.origin.x = self.contentEdgeInsets.left + self.titleEdgeInsets.left;
                 titleFrame.size.width =  CGRectGetMinX(imageFrame) - self.imageEdgeInsets.left - self.titleEdgeInsets.right - CGRectGetMinX(titleFrame);
                 break;
+            default:
+                break;
         }
         
         switch (self.contentVerticalAlignment) {
@@ -239,6 +243,20 @@ UIEdgeInsetsGetVerticalValue(UIEdgeInsets insets) {
         
         self.imageView.frame = imageFrame;
         self.titleLabel.frame = titleFrame;
+    }
+}
+
+#pragma mark - Action
+
+- (void)buttonTouchUpInside {
+    [[GZMenuController sharedMenuController] setMenuVisible:NO];
+    if (self.menuItem.target && self.menuItem.action) {
+        if ([self.menuItem.target respondsToSelector:self.menuItem.action]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [self.menuItem.target performSelector:self.menuItem.action withObject:self];
+#pragma clang diagnostic pop
+        }
     }
 }
 
@@ -316,7 +334,7 @@ UIEdgeInsetsGetVerticalValue(UIEdgeInsets insets) {
     if (_menuItemHighlightColor) {
         self.highlightedColor = _menuItemHighlightColor;
     }
-    [self addTarget:_menuItem.target action:_menuItem.action forControlEvents:UIControlEventTouchUpInside];
+    [self addTarget:self action:@selector(buttonTouchUpInside) forControlEvents:UIControlEventTouchUpInside];
 }
 
 

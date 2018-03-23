@@ -49,7 +49,7 @@ static inline CGSize GZMenuScreenSize() {
         sharedWindow = [[GZMenuWindow alloc] init];
         sharedWindow.frame = (CGRect){.size = GZMenuScreenSize()};
         sharedWindow.userInteractionEnabled = NO;
-        sharedWindow.windowLevel = UIWindowLevelStatusBar + 1;
+        sharedWindow.windowLevel = UIWindowLevelNormal;
         sharedWindow.hidden = NO;
         
         // for iOS 9:
@@ -75,6 +75,7 @@ static inline CGSize GZMenuScreenSize() {
 
 #pragma mark - Private methods
 
+
 - (void)_showMenu:(GZMenuContainer *)menu animation:(BOOL)animation {
     if (!menu) {
         return;
@@ -83,26 +84,26 @@ static inline CGSize GZMenuScreenSize() {
     menu.alpha = 0;
     
     if (menu.superview != self) {
-       [self addSubview:menu];
+        [self addSubview:menu];
     }
     
     self.currentMenu = menu;
-    [self _updateWindowLevel];
+    [self _updateWindowLevel:YES];
     
     [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerWillShowMenuNotification object:nil];
     
-    NSTimeInterval time =  0;
     if (animation) {
-        time = 0.16;
-    }
-    
-    [UIView animateWithDuration:time delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        if (menu) {
-            menu.alpha = 1;
-        }
-    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.16 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            if (menu) {
+                menu.alpha = 1;
+            }
+        } completion:^(BOOL finished) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerDidShowMenuNotification object:nil];
+        }];
+    } else {
+        menu.alpha = 1;
         [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerDidShowMenuNotification object:nil];
-    }];
+    }
 }
 
 - (void)_hideMenu:(GZMenuContainer *)menu animation:(BOOL)animation {
@@ -116,23 +117,28 @@ static inline CGSize GZMenuScreenSize() {
     
     [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerWillHideMenuNotification object:nil];
     
-    NSTimeInterval time =  0;
     if (animation) {
-        time = 0.16;
-    }
-    
-    [UIView animateWithDuration:time delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        if (menu) {
-            menu.alpha = 0;
-            [menu removeFromSuperview];
-        }
-    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.16 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            if (menu) {
+                menu.alpha = 0;
+                [menu removeFromSuperview];
+            }
+        } completion:^(BOOL finished) {
+            self.currentMenu = nil;
+            [self _updateWindowLevel:NO];
+            [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerDidHideMenuNotification object:nil];
+        }];
+    } else {
+        menu.alpha = 0;
+        [menu removeFromSuperview];
+        self.currentMenu.menuItems = nil;
         self.currentMenu = nil;
+        [self _updateWindowLevel:NO];
         [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerDidHideMenuNotification object:nil];
-    }];
+    }
 }
 
-- (void)_updateWindowLevel {
+- (void)_updateWindowLevel:(BOOL)increase {
     UIApplication *app =  [UIApplication sharedApplication];
     if (!app) {
         return;
@@ -142,6 +148,11 @@ static inline CGSize GZMenuScreenSize() {
     UIWindow *key = app.keyWindow;
     if (key && key.windowLevel > top.windowLevel) {
         top = key;
+    }
+    
+    if (!increase) {
+        self.windowLevel = top.windowLevel - 1;
+        return;
     }
     
     if (top == self) {

@@ -25,8 +25,6 @@
 @property (nonatomic, strong) GZMenuButton *forwardButton;
 @property (nonatomic, strong) GZMenuButton *backwardButton;
 
-@property (nonatomic, strong) NSCache *menuItemCache;
-
 @end
 
 @implementation GZMenuView
@@ -318,11 +316,7 @@
 }
 
 - (GZMenuButton *)createButtonWithItem:(GZMenuItem *)menuItem {
-    GZMenuButton *button = [self.menuItemCache objectForKey:menuItem.description];
-    if (!button) {
-        button = [GZMenuButton menuButtonWithMenuItem:menuItem];
-        [self.menuItemCache setObject:button forKey:menuItem.description cost:1];
-    }
+    GZMenuButton *button = [GZMenuButton menuButtonWithMenuItem:menuItem];
     
     button.imagePosition = self.imagePosition;
     button.menuItemFont = self.menuItemFont;
@@ -390,13 +384,6 @@
         _backwardButton = [self createButtonWithItem:backwardItem];
     }
     return _backwardButton;
-}
-
-- (NSCache *)menuItemCache {
-    if (!_menuItemCache) {
-        _menuItemCache = [[NSCache alloc] init];
-    }
-    return _menuItemCache;
 }
 
 @end

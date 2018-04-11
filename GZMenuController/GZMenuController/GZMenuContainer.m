@@ -25,7 +25,9 @@
 
 @end
 
-@implementation GZMenuContainer
+@implementation GZMenuContainer {
+    CGFloat _keyboardHeight;
+}
 
 #pragma mark - Life cycle
 
@@ -34,8 +36,13 @@
     self = [super init];
     if (self) {
         [self _setupDefaultConfigs];
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     }
     return self;
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 - (void)layoutSubviews {
@@ -91,6 +98,15 @@
     self.contentLayer.frame = self.bounds;
 }
 
+#pragma mark - Notification
+
+- (void)keyboardWillShow:(NSNotification *)notification {
+    NSDictionary *userInfo = [notification userInfo];
+    NSValue *aValue = [userInfo objectForKey:UIKeyboardFrameEndUserInfoKey];
+    CGRect keyboardRect = [aValue CGRectValue];
+    _keyboardHeight = keyboardRect.size.height;
+}
+
 #pragma mark - Public methods
 
 - (void)setTargetRect:(CGRect)targetRect inView:(UIView *)targetView {
@@ -114,18 +130,19 @@
     [self.menuView updateLayout];
     CGRect menuRect = self.menuView.frame;
     CGRect rect = [self.targetView convertRect:self.targetRect toView:[GZMenuWindow sharedWindow]];
+    CGFloat menuContainerViewMaxWidth = [self menuContainerViewMaxWidth];
     
     self.anchorPoint = [self _calculateAnchorPoint:rect menuViewSize:menuRect.size];
     
-    if (self.anchorPoint.x < GZMenuScreenWidth/2) {
+    if (self.anchorPoint.x < menuContainerViewMaxWidth/2) {
         if ((self.anchorPoint.x-menuRect.size.width/2)>self.menuEdgeInsets.left) {
             menuRect.origin.x = (self.anchorPoint.x-menuRect.size.width/2);
         } else {
             menuRect.origin.x = self.menuEdgeInsets.left;
         }
     } else {
-        if ((self.anchorPoint.x + menuRect.size.width/2)>(GZMenuScreenWidth-self.menuEdgeInsets.right)) {
-            menuRect.origin.x = (GZMenuScreenWidth - self.menuEdgeInsets.right-menuRect.size.width);
+        if ((self.anchorPoint.x + menuRect.size.width/2)>(menuContainerViewMaxWidth-self.menuEdgeInsets.right)) {
+            menuRect.origin.x = (menuContainerViewMaxWidth - self.menuEdgeInsets.right-menuRect.size.width);
         } else {
             menuRect.origin.x =(self.anchorPoint.x - menuRect.size.width/2);
         }
@@ -159,15 +176,15 @@
 - (void)_setupDefaultConfigs {
     _autoHide = YES;
     _unfoldDisplay = YES;
-    _maxMenuViewWidth = GZMenuScreenWidth;
-    _menuEdgeInsets = UIEdgeInsetsMake(10, 10, 10, 10);
+    _maxMenuViewWidth = [self menuContainerViewMaxWidth];
+    _menuEdgeInsets = UIEdgeInsetsMake(5, 10, 5, 10);
     _cornerRadius = 6;
     _arrowSize = CGSizeMake(17, 9.7);
     _arrowMargin = 5.5;
-    _fillColor = [UIColor colorWithRed:26/255 green:26/288 blue:27/255 alpha:1];
-    _menuItemFont = [UIFont systemFontOfSize:14];
+    _fillColor = [UIColor colorWithRed:26.0/255 green:26.0/288 blue:26.0/255 alpha:1];
+    _menuItemFont = [UIFont systemFontOfSize:11];
     _menuItemTintColor = [UIColor whiteColor];
-    _menuItemHighlightColor = [UIColor lightGrayColor];
+    _menuItemHighlightColor = [UIColor colorWithRed:50.0/255 green:50.0/288 blue:50.0/255 alpha:1];
     _imagePosition = GZMenuButtonImagePositionTop;
     
     [self.layer addSublayer:self.contentLayer];
@@ -175,24 +192,26 @@
 
 
 - (CGPoint)_calculateAnchorPoint:(CGRect)targetRect menuViewSize:(CGSize)size {
-
-    CGPoint targetPoint = CGPointZero;
     
-    if (CGRectGetMinX(targetRect) > 0 && CGRectGetMaxX(targetRect) < GZMenuScreenWidth) {
+    CGPoint targetPoint = CGPointZero;
+    CGFloat menuContainerViewMaxWidth = [self menuContainerViewMaxWidth];
+    CGFloat menuContainerViewMaxHeight = [self menuContainerViewMaxHeight];
+    
+    if (CGRectGetMinX(targetRect) > 0 && CGRectGetMaxX(targetRect) < menuContainerViewMaxWidth) {
         targetPoint.x = CGRectGetMidX(targetRect);
-    } else if (CGRectGetMinX(targetRect) < 0 && CGRectGetMaxX(targetRect) > GZMenuScreenWidth) {
-        targetPoint.x = GZMenuScreenWidth / 2;
+    } else if (CGRectGetMinX(targetRect) < 0 && CGRectGetMaxX(targetRect) > menuContainerViewMaxWidth) {
+        targetPoint.x = menuContainerViewMaxWidth / 2;
     } else {
         if (CGRectGetMinX(targetRect) < 0) {
             targetPoint.x = CGRectGetMaxX(targetRect) / 2;
         } else {
-            targetPoint.x = (GZMenuScreenWidth - CGRectGetMinX(targetRect)) / 2;
+            targetPoint.x = (menuContainerViewMaxWidth - CGRectGetMinX(targetRect)) / 2;
         }
     }
     
     CGFloat realSizeHeight = size.height + self.arrowMargin + self.arrowSize.height;
     BOOL targetBeyondTop = (CGRectGetMinY(targetRect) - realSizeHeight) < GZMenuStatusBarHeight;
-    BOOL targetBeyondBottom = (CGRectGetMaxY(targetRect) + realSizeHeight) > GZMenuScreenHeight;
+    BOOL targetBeyondBottom = (CGRectGetMaxY(targetRect) + realSizeHeight) > menuContainerViewMaxHeight;
     
     BOOL adjustTargetPointY = NO;
     
@@ -234,9 +253,13 @@
     
     if (adjustTargetPointY) {
         realSizeHeight -= self.arrowMargin;
-        if (realSizeHeight > GZMenuScreenHeight) {
+        if (realSizeHeight > menuContainerViewMaxHeight) {
             NSAssert(false, @"menu is too high!");
-            targetPoint.y = GZMenuScreenHeight / 2;
+            if (self.correctDirection == GZMenuControllerArrowUp) {
+                targetPoint.y = 0;
+            } else {
+                targetPoint.y = menuContainerViewMaxHeight;
+            }
             return targetPoint;
         }
         
@@ -245,9 +268,9 @@
         
         switch (self.correctDirection) {
             case GZMenuControllerArrowUp: {
-                maxPointY = GZMenuScreenHeight - realSizeHeight - self.menuEdgeInsets.bottom;
+                maxPointY = menuContainerViewMaxHeight - realSizeHeight - self.menuEdgeInsets.bottom;
                 
-                if (GZMenuScreenHeight - CGRectGetMinY(targetRect) + self.menuEdgeInsets.top > realSizeHeight) {
+                if (menuContainerViewMaxHeight - CGRectGetMinY(targetRect) + self.menuEdgeInsets.top > realSizeHeight) {
                     minPointY = CGRectGetMinY(targetRect);
                     if (minPointY < 0) {
                         minPointY = 0;
@@ -261,8 +284,8 @@
                 minPointY = realSizeHeight + self.menuEdgeInsets.top;
                 if (CGRectGetMaxY(targetRect) - self.menuEdgeInsets.top > realSizeHeight) {
                     maxPointY = CGRectGetMaxY(targetRect);
-                    if (maxPointY > GZMenuScreenHeight - self.menuEdgeInsets.bottom) {
-                        maxPointY = GZMenuScreenHeight - self.menuEdgeInsets.bottom;
+                    if (maxPointY > menuContainerViewMaxHeight - self.menuEdgeInsets.bottom) {
+                        maxPointY = menuContainerViewMaxHeight - self.menuEdgeInsets.bottom;
                     }
                 } else {
                     maxPointY = minPointY;
@@ -272,7 +295,7 @@
             case GZMenuControllerArrowDefault:
             default: {
                 NSAssert(false, @"correct direction is confused!");
-                targetPoint.y = GZMenuScreenHeight / 2;
+                targetPoint.y = menuContainerViewMaxHeight / 2;
                 return targetPoint;
             }
         }
@@ -285,6 +308,22 @@
     }
     
     return targetPoint;
+}
+
+- (CGFloat)menuContainerViewMaxHeight {
+    CGFloat menuContainerViewMaxHeight = GZMenuScreenHeight;
+    
+    // 显示键盘时，需减去键盘高度
+    UIWindow *topWindow = [[UIApplication sharedApplication].windows lastObject];
+    if ([topWindow isKindOfClass:NSClassFromString(@"UIRemoteKeyboardWindow")]) {
+        menuContainerViewMaxHeight -= _keyboardHeight;
+    }
+    
+    return menuContainerViewMaxHeight;
+}
+
+- (CGFloat)menuContainerViewMaxWidth {
+    return GZMenuScreenWidth;
 }
 
 #pragma mark - Setter

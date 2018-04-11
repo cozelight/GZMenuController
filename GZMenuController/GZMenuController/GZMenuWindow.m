@@ -73,6 +73,56 @@ static inline CGSize GZMenuScreenSize() {
     }
 }
 
+// stop self from becoming the KeyWindow
+- (void)becomeKeyWindow {
+    UIApplication *application = [UIApplication sharedApplication];
+    if (!application) {
+        return;
+    }
+    UIWindow *keyWindow = application.keyWindow;
+    if (keyWindow && keyWindow != self) {
+        keyWindow.hidden = NO;
+        [keyWindow makeKeyWindow];
+        return;
+    }
+    UIWindow *appWindow = [application.delegate window];
+    if (appWindow && appWindow != self) {
+        appWindow.hidden = NO;
+        [appWindow makeKeyWindow];
+    }
+}
+
+- (UIViewController *)rootViewController {
+    UIApplication *application = [UIApplication sharedApplication];
+    if (application) {
+        UIWindow *keyWindow = application.keyWindow;
+        if (keyWindow && !keyWindow.isHidden && keyWindow != self) {
+            UIViewController *topViewController = keyWindow.rootViewController;
+            if (topViewController) {
+                return topViewController;
+            }
+        }
+        NSArray *windows = application.windows;
+        if (windows) {
+            for (UIWindow *window in windows) {
+                if (self == window) continue;
+                if (window.hidden) continue;
+                UIViewController *topViewController = window.rootViewController;
+                if (topViewController) {
+                    return topViewController;
+                }
+            }
+        }
+    }
+    
+    UIViewController *viewController = [super rootViewController];
+    if (!viewController) {
+        viewController = [UIViewController new];
+        [super setRootViewController:viewController];
+    }
+    return viewController;
+}
+
 #pragma mark - Private methods
 
 
@@ -88,7 +138,7 @@ static inline CGSize GZMenuScreenSize() {
     }
     
     self.currentMenu = menu;
-    [self _updateWindowLevel:YES];
+    [self _updateWindowLevel];
     
     [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerWillShowMenuNotification object:nil];
     
@@ -125,7 +175,6 @@ static inline CGSize GZMenuScreenSize() {
             }
         } completion:^(BOOL finished) {
             self.currentMenu = nil;
-            [self _updateWindowLevel:NO];
             [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerDidHideMenuNotification object:nil];
         }];
     } else {
@@ -133,12 +182,11 @@ static inline CGSize GZMenuScreenSize() {
         [menu removeFromSuperview];
         self.currentMenu.menuItems = nil;
         self.currentMenu = nil;
-        [self _updateWindowLevel:NO];
         [[NSNotificationCenter defaultCenter] postNotificationName:GZMenuControllerDidHideMenuNotification object:nil];
     }
 }
 
-- (void)_updateWindowLevel:(BOOL)increase {
+- (void)_updateWindowLevel {
     UIApplication *app =  [UIApplication sharedApplication];
     if (!app) {
         return;
@@ -148,11 +196,6 @@ static inline CGSize GZMenuScreenSize() {
     UIWindow *key = app.keyWindow;
     if (key && key.windowLevel > top.windowLevel) {
         top = key;
-    }
-    
-    if (!increase) {
-        self.windowLevel = top.windowLevel - 1;
-        return;
     }
     
     if (top == self) {
